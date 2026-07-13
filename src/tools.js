@@ -108,4 +108,60 @@ export function registerTools(server) {
     {},
     wrap(() => sm.listLocations())
   );
+
+  // -------------------------------------------------------------------------
+  // Write tools (v1.1) — intake-form-to-estimate workflow
+  // -------------------------------------------------------------------------
+
+  server.tool(
+    "create_customer",
+    "Create a new Shopmonkey customer. Always search list_customers first to avoid duplicates; only create when no match exists.",
+    {
+      firstName: z.string().optional().describe("Contact first name"),
+      lastName: z.string().optional().describe("Contact last name"),
+      companyName: z.string().optional().describe("Agency or company name (sets customer type to commercial)"),
+      email: z.string().optional().describe("Primary email"),
+      phone: z.string().optional().describe("Primary phone number"),
+      locationId: z.string().optional().describe("Home shop location ID"),
+    },
+    wrap(sm.createCustomer)
+  );
+
+  server.tool(
+    "create_vehicle",
+    "Add a vehicle to an existing Shopmonkey customer. Check get_customer first — the vehicle may already be on file.",
+    {
+      customerId: z.string().describe("Shopmonkey customer ID the vehicle belongs to"),
+      year: z.number().int().optional().describe("Model year, e.g. 2026"),
+      make: z.string().optional().describe("e.g. Ford"),
+      model: z.string().optional().describe("e.g. Police Interceptor Utility"),
+      submodel: z.string().optional(),
+      vin: z.string().optional(),
+      unitNumber: z.string().optional().describe("Fleet unit number, e.g. 125"),
+      color: z.string().optional(),
+    },
+    wrap(sm.createVehicle)
+  );
+
+  server.tool(
+    "create_estimate",
+    "Create a Shopmonkey work order in Estimate status with named services. Pricing is added in Shopmonkey afterward from canned services. Requires locationId (resolve via list_locations) and customerId (resolve or create first).",
+    {
+      locationId: z.string().describe("Shop location ID for the build"),
+      customerId: z.string().describe("Shopmonkey customer ID"),
+      vehicleId: z.string().optional().describe("Shopmonkey vehicle ID (create_vehicle first if new)"),
+      name: z.string().optional().describe("Order name/label, e.g. 'Unit 125 - 2026 PIU Patrol Build'"),
+      note: z.string().optional().describe("Order-level note; put the full intake form summary here"),
+      services: z
+        .array(
+          z.object({
+            name: z.string().describe("Service name, ideally matching a canned service"),
+            note: z.string().optional().describe("Detail for this service from the intake form"),
+          })
+        )
+        .optional()
+        .describe("One entry per build package (lighting, siren, console, etc.)"),
+    },
+    wrap(sm.createEstimate)
+  );
 }
